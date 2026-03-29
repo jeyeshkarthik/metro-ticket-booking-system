@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chennai Metro — Ticket Booking</title>
+  <meta name="description" content="Book Chennai metro tickets quickly and easily." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap"
+    rel="stylesheet" />
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+
+  <!-- ══════════ LOGIN PAGE ══════════ -->
+  <section class="page active" id="page-login">
+    <div class="login-wrapper">
+      <div class="login-card">
+        <div class="login-logo">
+          <span class="logo-icon">🚇</span>
+          <h1>Chennai Metro</h1>
+          <p>Ticket Booking System</p>
+        </div>
+        <div class="form-group">
+          <label class="form-label">User ID</label>
+          <input type="text" id="loginUserId" class="form-input" placeholder="Enter your user ID" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password</label>
+          <input type="password" id="loginPassword" class="form-input" placeholder="Enter your password" />
+        </div>
+        <button class="btn-primary full-width" onclick="login()">Login →</button>
+        <p class="hint-text">Demo accounts: user1/pass1 · user2/pass2 · user3/pass3</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ DASHBOARD ══════════ -->
+  <section class="page" id="page-dashboard">
+
+    <nav class="navbar">
+      <div class="nav-brand" onclick="showTab('home')" style="cursor:pointer;">
+        <span>🚇</span><span>Chennai Metro</span>
+      </div>
+      <div class="nav-right">
+        <span class="nav-user" id="navUser"></span>
+        <button class="nav-tab" id="ntab-map" onclick="showTab('map')">🗺️ Metro Map</button>
+        <button class="btn-theme" id="themeToggle" onclick="toggleTheme()" title="Toggle dark mode">🌙</button>
+        <button class="btn-logout" onclick="logout()">Logout</button>
+      </div>
+    </nav>
+
+    <!-- HOME -->
+    <div class="tab-content active" id="tab-home">
+      <div class="home-hero">
+        <p class="home-greeting" id="homeGreeting"></p>
+        <h2 class="home-title">Where are you headed today?</h2>
+      </div>
+      <div class="home-actions-grid container">
+        <div class="action-card" onclick="showTab('booking')">
+          <div class="action-icon">🎟️</div>
+          <div class="action-label">Book a Ticket</div>
+          <div class="action-desc">Choose stations, pick a train &amp; pay instantly</div>
+          <span class="action-arrow"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+              fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12h14M13 6l6 6-6 6" />
+            </svg></span>
+        </div>
+        <div class="action-card" onclick="showTab('history')">
+          <div class="action-icon">🎫</div>
+          <div class="action-label">My Tickets</div>
+          <div class="action-desc">View all your previously booked tickets</div>
+          <span class="action-arrow"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24"
+              fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M5 12h14M13 6l6 6-6 6" />
+            </svg></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- HISTORY -->
+    <div class="tab-content" id="tab-history">
+      <div id="historyListView">
+        <div class="page-header">
+          <button class="btn-back" onclick="showTab('home')">← Back</button>
+          <h2>🎫 My Ticket History</h2>
+          <p>All tickets booked with your account</p>
+        </div>
+        <div class="container" id="historyContainer"></div>
+      </div>
+      
+      <div id="historyDetailView" style="display:none;">
+        <div class="page-header">
+          <button class="btn-back" onclick="closeHistoryTicket()">← Back to History</button>
+          <h2>🎫 Ticket Details</h2>
+          <p>Review your booking and route information</p>
+        </div>
+        <div class="container" id="historyDetailContainer"></div>
+      </div>
+    </div>
+
+    <!-- MAP -->
+    <div class="tab-content" id="tab-map">
+      <div class="page-header">
+        <button class="btn-back" onclick="showTab('home')">← Back</button>
+        <h2>🗺️ Metro Map</h2>
+        <p>All lines and stations of Chennai Metro</p>
+      </div>
+      <div class="container" id="mapContainer"></div>
+    </div>
+
+    <!-- BOOKING -->
+    <div class="tab-content" id="tab-booking">
+      <div class="page-header">
+        <button class="btn-back" onclick="showTab('home')">← Back</button>
+        <h2>🎟️ Book a Ticket</h2>
+        <p>Select stations, pick a train, then pay</p>
+      </div>
+      <div class="container">
+
+        <!-- Step 1: Station + count form -->
+        <div class="step-label">Step 1 — Choose Journey</div>
+        <div class="booking-card">
+          <div class="form-group">
+            <label class="form-label">🟢 Start Station</label>
+            <select id="fromStation" class="form-select" onchange="resetBookingFlow()">
+              <option value="">-- Select Start Station --</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">🔴 End Station</label>
+            <select id="toStation" class="form-select" onchange="resetBookingFlow()">
+              <option value="">-- Select End Station --</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">🎫 Number of Tickets</label>
+            <input type="number" id="numTickets" class="form-input" value="1" min="1" max="10"
+              oninput="resetBookingFlow()" />
+          </div>
+          <button class="btn-primary full-width" onclick="findAndBook()">Find Route &amp; Show Trains →</button>
+        </div>
+
+        <!-- Route summary (shown after finding route) -->
+        <div id="routeSummaryPanel" style="display:none;">
+          <div class="step-label">Route</div>
+          <div class="route-summary-card">
+            <div class="route-segments" id="tRoute"></div>
+          </div>
+        </div>
+
+        <!-- Step 2: Train Timings (info only) -->
+        <div id="trainTimingsPanel" style="display:none;">
+          <div class="step-label">Step 2 — Upcoming Trains</div>
+          <div id="timingsContent"></div>
+        </div>
+
+        <!-- Step 3: Ticket Preview -->
+        <div id="ticketResult" style="display:none;">
+          <div class="step-label">Step 3 — Review &amp; Pay</div>
+          <div class="ticket-card">
+            <div class="ticket-header-bar">
+              <span class="ticket-brand">🚇 Chennai Metro</span>
+              <span class="ticket-badge pending">PENDING PAYMENT</span>
+            </div>
+            <div class="ticket-body">
+              <div class="ticket-row">
+                <div class="ticket-field">
+                  <div class="t-label">From</div>
+                  <div class="t-val green" id="tFrom"></div>
+                </div>
+                <div class="ticket-arrow"><svg xmlns="http://www.w3.org/2000/svg" width="22" height="22"
+                    viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                    stroke-linejoin="round">
+                    <path d="M5 12h14M13 6l6 6-6 6" />
+                  </svg></div>
+                <div class="ticket-field">
+                  <div class="t-label">To</div>
+                  <div class="t-val red" id="tTo"></div>
+                </div>
+              </div>
+              <div class="ticket-row">
+                <div class="ticket-field">
+                  <div class="t-label">Passenger</div>
+                  <div class="t-val" id="tPassenger"></div>
+                </div>
+                <div class="ticket-field">
+                  <div class="t-label">Tickets</div>
+                  <div class="t-val" id="tCount"></div>
+                </div>
+              </div>
+              <div class="ticket-row">
+                <div class="ticket-field">
+                  <div class="t-label">Booked At</div>
+                  <div class="t-val" id="tTime"></div>
+                </div>
+                <div class="ticket-field">
+                  <div class="t-label">Ticket ID</div>
+                  <div class="t-val ticket-id-text" id="tId"></div>
+                </div>
+              </div>
+              <div class="ticket-row">
+                <div class="ticket-field">
+                  <div class="t-label">Fare / Ticket</div>
+                  <div class="t-val" id="tFare"></div>
+                </div>
+                <div class="ticket-field">
+                  <div class="t-label">Total Fare</div>
+                  <div class="t-val fare-big" id="tTotal"></div>
+                </div>
+              </div>
+            </div>
+            <div class="ticket-perf"></div>
+            <div class="ticket-confirm-actions">
+              <button class="btn-primary" id="btnProceedToPay" onclick="proceedToPayment()">💳 Proceed to Payment →</button>
+              <div id="bookingClosedMessage" style="display:none; color: var(--red); font-size: 14px; font-weight: 600; padding: 12px; background: rgba(224,122,122,0.1); border-radius: 8px; text-align: center; width: 100%;">
+                🚫 Booking is currently closed. Booking starts at 4:30 AM.
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Step 4: Payment Panel -->
+        <div id="paymentPanel" style="display:none;">
+          <div class="step-label">Step 4 — Payment</div>
+          <div class="payment-card">
+            <div class="pay-amount-bar">
+              <span>Amount to Pay</span>
+              <span class="pay-amount" id="payAmount">₹0</span>
+            </div>
+
+            <!-- Tabs -->
+            <div class="pay-tabs">
+              <button class="pay-tab active" id="ptab-upi" data-tab="upi" onclick="selectPayTab('upi')">📱 UPI</button>
+              <button class="pay-tab" id="ptab-card" data-tab="card" onclick="selectPayTab('card')">💳 Card</button>
+            </div>
+
+            <!-- UPI Panel -->
+            <div class="pay-panel active" id="ppanel-upi">
+              <div class="upi-apps">
+                <button class="upi-app" onclick="fillUpi('gpay')"><span>G</span>Pay</button>
+                <button class="upi-app" onclick="fillUpi('phonepe')"><span>P</span>PhonePe</button>
+                <button class="upi-app" onclick="fillUpi('paytm')"><span>P</span>Paytm</button>
+                <button class="upi-app" onclick="fillUpi('bhim')"><span>B</span>BHIM</button>
+              </div>
+              <div class="form-group" style="margin-top:12px;">
+                <label class="form-label">UPI ID</label>
+                <input type="text" id="upiId" class="form-input" placeholder="yourname@upi" />
+              </div>
+            </div>
+
+            <!-- Card Panel -->
+            <div class="pay-panel" id="ppanel-card">
+              <div class="form-group">
+                <label class="form-label">Card Number</label>
+                <input type="text" id="cardNum" class="form-input" placeholder="0000 0000 0000 0000" maxlength="19"
+                  oninput="formatCard(this)" />
+              </div>
+              <div class="card-row">
+                <div class="form-group flex-1">
+                  <label class="form-label">Expiry (MM/YY)</label>
+                  <input type="text" id="cardExp" class="form-input" placeholder="MM/YY" maxlength="5"
+                    oninput="formatExpiry(this)" />
+                </div>
+                <div class="form-group flex-1">
+                  <label class="form-label">CVV</label>
+                  <input type="password" id="cardCvv" class="form-input" placeholder="•••" maxlength="3" />
+                </div>
+              </div>
+            </div>
+
+            <button class="btn-primary full-width pay-btn" onclick="confirmPayment()">
+              🔒 Pay <span id="payAmountBtn">₹0</span>
+            </button>
+          </div>
+        </div>
+
+      </div><!-- /container -->
+    </div><!-- /tab-booking -->
+
+  </section>
+
+  <div class="toast" id="toast"></div>
+  <script src="script.js"></script>
+</body>
+
+</html>
