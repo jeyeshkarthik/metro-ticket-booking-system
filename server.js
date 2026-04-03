@@ -1,61 +1,43 @@
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
-const oracledb = require('oracledb');
+const { Pool } = require('pg');
 
 const app = express();
-const PORT = 3005;
+const PORT = process.env.PORT || 3005;
 
-// ── Oracle DB config ──────────────────────────────────────────
-const DB_CONFIG = {
-    user: 'system',   // replace with your Oracle username
-    password: 'root',   // replace with your Oracle password
-    connectString: 'localhost:1521/xe',    // replace with your connect string (e.g. localhost/ORCL)
-};
-
-// ── Reusable connection function ──────────────────────────────
-async function getConnection() {
-    return await oracledb.getConnection(DB_CONFIG);
-}
+// ── PostgreSQL DB config ──────────────────────────────────────
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    // When deploying to Render, you typically need to allow unauthorized SSL
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+});
 
 // ── Middleware ────────────────────────────────────────────────
 app.use(cors());
 app.use(bodyParser.json());
-
-// ── Test route ────────────────────────────────────────────────
-app.get('/', (req, res) => {
-    res.send('Server running');
-});
+// Serve static frontend files
+app.use(express.static(__dirname));
 
 // ── DB connection test route ──────────────────────────────────
 app.get('/test-db', async (req, res) => {
-    let conn;
     try {
-        conn = await getConnection();
-        const result = await conn.execute('SELECT 1 FROM DUAL');
-        res.json({ status: 'Oracle DB connected', result: result.rows });
+        const result = await pool.query('SELECT 1 AS num');
+        res.json({ status: 'PostgreSQL DB connected', result: result.rows });
     } catch (err) {
         res.status(500).json({ error: err.message });
-    } finally {
-        if (conn) await conn.close();
     }
 });
 
 // ── GET /stations ─────────────────────────────────────────────
 app.get('/stations', async (req, res) => {
-    let conn;
     try {
-        conn = await getConnection();
-        const result = await conn.execute(
-            'SELECT station_id, station_name, location FROM STATION ORDER BY station_id',
-            [],
-            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        const result = await pool.query(
+            'SELECT station_id AS "STATION_ID", station_name AS "STATION_NAME", location AS "LOCATION" FROM STATION ORDER BY station_id'
         );
         res.json(result.rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
-    } finally {
-        if (conn) await conn.close();
     }
 });
 
@@ -67,21 +49,14 @@ app.post('/login', async (req, res) => {
         return res.status(400).json({ error: 'Username and password are required' });
     }
 
-    let conn;
     try {
-        conn = await getConnection();
-        
         const query = `
             SELECT passenger_id, username, name, email, phone 
             FROM PASSENGER 
-            WHERE username = :u AND password = :p
+            WHERE username = $1 AND password = $2
         `;
         
-        const result = await conn.execute(
-            query,
-            { u: username, p: password },
-            { outFormat: oracledb.OUT_FORMAT_OBJECT }
-        );
+        const result = await pool.query(query, [username, password]);
 
         if (result.rows.length === 0) {
             return res.status(401).json({ error: 'Invalid User ID or Password' });
@@ -91,18 +66,16 @@ app.post('/login', async (req, res) => {
         res.json({
             success: true,
             user: {
-                passenger_id: user.PASSENGER_ID,
-                username: user.USERNAME,
-                name: user.NAME,
-                email: user.EMAIL,
-                phone: user.PHONE
+                passenger_id: user.passenger_id,
+                username: user.username,
+                name: user.name,
+                email: user.email,
+                phone: user.phone
             }
         });
     } catch (err) {
         console.error('Login Error:', err);
         res.status(500).json({ error: 'Database error: ' + err.message });
-    } finally {
-        if (conn) await conn.close();
     }
 });
 
@@ -118,11 +91,7 @@ app.post('/route', async (req, res) => {
         return res.status(400).json({ error: 'Source and destination cannot be the same' });
     }
 
-    let conn;
     try {
-        conn = await getConnection();
-
-        // Query ROUTE, JOIN STATION to get names, and subquery LINE_STATION to get distance
         const query = `
             SELECT 
                 r.route_id, 
@@ -140,29 +109,24 @@ app.post('/route', async (req, res) => {
             FROM ROUTE r
             JOIN STATION s1 ON s1.station_id = r.source_station_id
             JOIN STATION s2 ON s2.station_id = r.destination_station_id
-            WHERE r.source_station_id = :src 
-              AND r.destination_station_id = :dest
+            WHERE r.source_station_id = $1 
+              AND r.destination_station_id = $2
         `;
 
-        const result = await conn.execute(
-            query,
-            { src: source_station_id, dest: destination_station_id },
-            { outFormat: oracledb.OUT_FORMAT_OBJECT }
-        );
+        const result = await pool.query(query, [source_station_id, destination_station_id]);
 
         if (result.rows.length === 0) {
             return res.status(404).json({ error: 'No route found for the given stations' });
         }
 
         const dbRow = result.rows[0];
-
-        // Extract num_stations safely
-        const stationsCount = dbRow.NUM_STATIONS != null ? dbRow.NUM_STATIONS : 6;
+        const stationsCount = dbRow.num_stations != null ? parseInt(dbRow.num_stations, 10) : 6;
         const fare = stationsCount === 0 ? 5 : stationsCount * 5;
 
-        // oracledb row objects can be strict. Spread it into a new simple JS object:
+        // return UPPERCASE to match script.js expectation where possible, or just the whole row plus keys
         const routeData = {
             ...dbRow,
+            ROUTE_ID: dbRow.route_id,
             NUM_STATIONS: stationsCount,
             FARE: fare
         };
@@ -170,80 +134,59 @@ app.post('/route', async (req, res) => {
         res.json([routeData]);
     } catch (err) {
         res.status(500).json({ error: err.message });
-    } finally {
-        if (conn) await conn.close();
     }
 });
 
 // ── GET /next-trains ──────────────────────────────────────────
 app.get('/next-trains', async (req, res) => {
-    let conn;
     try {
-        conn = await getConnection();
-
-        // Fixed operating hours: 05:00–23:00 daily.
-        // Rebase start_time's HH:MM offset to today, then compute next frequency slot.
+        // Rewrite of the Oracle schedule query to PostgreSQL
+        // We find the next 4 departure times per train from SCHEDULE considering frequency.
         const query = `
             SELECT 
-                SUBSTR(train_number, 1, INSTR(train_number, ' ') - 1) || ' ' || 
-                (FLOOR(((CAST(next_departure AS DATE) - TRUNC(CAST(next_departure AS DATE))) * 24 * 60) / 5) + 1) AS train_number,
-                frequency_mins, 
+                split_part(t.train_number, ' ', 1) || ' ' || 
+                (FLOOR(EXTRACT(EPOCH FROM (next_departure::time)) / 300) + 1) AS train_number,
+                s.frequency AS frequency_mins, 
                 next_departure 
             FROM (
                 SELECT
                     t.train_number,
-                    s.frequency AS frequency_mins,
-                    today_start + NUMTODSINTERVAL(
-                        CEIL(
-                            GREATEST((SYSDATE - today_start) * 24 * 60, 0) / s.frequency
-                        ) * s.frequency + (iter.n * s.frequency),
-                        'MINUTE'
-                    ) AS next_departure
+                    s.frequency,
+                    CURRENT_DATE + s.start_time::time + 
+                    (CEIL(GREATEST(EXTRACT(EPOCH FROM (CURRENT_TIMESTAMP - (CURRENT_DATE + s.start_time::time))) / 60, 0) / s.frequency) * s.frequency + (iter.n * s.frequency)) * interval '1 minute' AS next_departure
                 FROM SCHEDULE s
                 JOIN TRAIN t ON t.train_id = s.train_id
-                JOIN (
-                    SELECT 
-                        schedule_id,
-                        TRUNC(SYSDATE) + (CAST(start_time AS DATE) - TRUNC(CAST(start_time AS DATE))) AS today_start
-                    FROM SCHEDULE
-                ) rebased ON rebased.schedule_id = s.schedule_id
                 CROSS JOIN (
-                    SELECT LEVEL - 1 AS n FROM DUAL CONNECT BY LEVEL <= 4
+                    SELECT generate_series(0, 3) AS n
                 ) iter
-                WHERE 
-                    SYSDATE <= TRUNC(SYSDATE) + 23/24
-            )
-            WHERE next_departure <= GREATEST(SYSDATE, TRUNC(SYSDATE) + 5/24) + NUMTODSINTERVAL(30, 'MINUTE')
-              AND next_departure <= TRUNC(SYSDATE) + 23/24
-            ORDER BY next_departure
+                WHERE CURRENT_TIMESTAMP <= (CURRENT_DATE + interval '23 hours')
+            ) calc
+            WHERE calc.next_departure <= GREATEST(CURRENT_TIMESTAMP, CURRENT_DATE + interval '5 hours') + interval '30 minutes'
+              AND calc.next_departure <= CURRENT_DATE + interval '23 hours'
+            ORDER BY calc.next_departure
         `;
 
-        const result = await conn.execute(query, [], { outFormat: oracledb.OUT_FORMAT_OBJECT });
+        const result = await pool.query(query);
 
+        // Keep returned properties matching the frontend expect
         const trains = result.rows.map(row => ({
-            train_number: row.TRAIN_NUMBER,
-            frequency_mins: row.FREQUENCY_MINS,
-            next_departure: row.NEXT_DEPARTURE
+            train_number: row.train_number,
+            frequency_mins: row.frequency_mins,
+            next_departure: row.next_departure
         }));
 
         res.json(trains);
     } catch (err) {
         res.status(500).json({ error: err.message });
-    } finally {
-        if (conn) await conn.close();
     }
 });
 
 // ── GET /tickets ──────────────────────────────────────────────
 app.get('/tickets', async (req, res) => {
-    let conn;
     try {
         const p_id = req.query.passenger_id;
         if (!p_id) return res.status(400).json({ error: 'passenger_id is required' });
 
-        conn = await getConnection();
-
-        // Dynamically translate string usernames if passed
         const query = `
             SELECT 
                 t.ticket_id,
@@ -258,16 +201,14 @@ app.get('/tickets', async (req, res) => {
             JOIN STATION s1 ON r.source_station_id = s1.station_id
             JOIN STATION s2 ON r.destination_station_id = s2.station_id
             LEFT JOIN PAYMENT p ON t.ticket_id = p.ticket_id
-            WHERE t.passenger_id = COALESCE((SELECT passenger_id FROM PASSENGER WHERE username = :p_val OR TO_CHAR(passenger_id) = :p_val), -1)
+            WHERE t.passenger_id = COALESCE((SELECT passenger_id FROM PASSENGER WHERE username = $1 OR passenger_id::text = $1 LIMIT 1), -1)
             ORDER BY t.booking_time DESC
         `;
 
-        const result = await conn.execute(query, { p_val: String(p_id) }, { outFormat: oracledb.OUT_FORMAT_OBJECT });
+        const result = await pool.query(query, [String(p_id)]);
         res.json(result.rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
-    } finally {
-        if (conn) await conn.close();
     }
 });
 
@@ -277,54 +218,39 @@ app.post('/book-ticket', async (req, res) => {
     console.log(req.body);
 
     const { passenger_id, route_id, payment_method } = req.body;
-
     const r_id = Number(route_id);
 
     if (!passenger_id || !r_id || isNaN(r_id)) {
         return res.status(400).json({ error: 'passenger_id and valid numeric route_id are required' });
     }
 
-    let conn;
+    const client = await pool.connect();
     try {
-        conn = await getConnection();
+        await client.query('BEGIN');
 
-        // 1. Insert into TICKET - if passenger_id is a username like 'user3', dynamically translate it!
+        // Insert into TICKET and GET ID
         const ticketSql = `
             INSERT INTO TICKET (passenger_id, route_id, booking_time) 
             VALUES (
-                COALESCE((SELECT passenger_id FROM PASSENGER WHERE username = :p_val OR TO_CHAR(passenger_id) = :p_val), 1), 
-                :route_id, 
-                SYSTIMESTAMP
+                COALESCE((SELECT passenger_id FROM PASSENGER WHERE username = $1 OR passenger_id::text = $1 LIMIT 1), 1), 
+                $2, 
+                CURRENT_TIMESTAMP
             )
-            RETURNING ticket_id INTO :ticket_id
+            RETURNING ticket_id
         `;
 
-        const ticketResult = await conn.execute(
-            ticketSql,
-            {
-                p_val: String(passenger_id),
-                route_id: r_id,
-                ticket_id: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT }
-            },
-            { autoCommit: false } // We commit after payment succeeds
-        );
+        const ticketResult = await client.query(ticketSql, [String(passenger_id), r_id]);
+        const newTicketId = ticketResult.rows[0].ticket_id;
 
-        const newTicketId = ticketResult.outBinds.ticket_id[0];
-
-        // 2. Insert into PAYMENT 
+        // Insert into PAYMENT 
         const paymentSql = `
             INSERT INTO PAYMENT (ticket_id, payment_method, payment_status, transaction_time)
-            VALUES (:ticket_id, :method, 'SUCCESS', SYSTIMESTAMP)
+            VALUES ($1, $2, 'SUCCESS', CURRENT_TIMESTAMP)
         `;
 
-        await conn.execute(
-            paymentSql,
-            {
-                ticket_id: newTicketId,
-                method: payment_method || 'UPI'
-            },
-            { autoCommit: true } // Commit safely now
-        );
+        await client.query(paymentSql, [newTicketId, payment_method || 'UPI']);
+
+        await client.query('COMMIT');
 
         res.json({
             success: true,
@@ -333,15 +259,16 @@ app.post('/book-ticket', async (req, res) => {
         });
 
     } catch (err) {
+        await client.query('ROLLBACK');
         console.error("=== DB ERROR ===");
         console.error(err);
         res.status(500).json({ error: 'Database error: ' + err.message });
     } finally {
-        if (conn) await conn.close();
+        client.release();
     }
 });
 
 // ── Start server ──────────────────────────────────────────────
 app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`Server running on http://0.0.0.0:${PORT}`);
 });
