@@ -19,6 +19,7 @@ This project simulates a metro ticketing system for the Chennai Metro network. I
 - Backend: `server.js`
 - Database seed scripts: `insert_data.sql`, `all_routes.sql`
 - Database fix helper: `fix_db.js`
+- Database tables created: `PASSENGER`, `LINE`, `STATION`, `LINE_STATION`, `TRAIN`, `SCHEDULE`, `ROUTE`, `TICKET`, `PAYMENT`
 
 ## Features
 
