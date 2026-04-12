@@ -153,6 +153,39 @@ function logout() {
   showPage('login');
 }
 
+async function signup() {
+  const username = document.getElementById('signupUsername').value.trim();
+  const password = document.getElementById('signupPassword').value;
+  const name     = document.getElementById('signupName').value.trim();
+  const email    = document.getElementById('signupEmail').value.trim();
+  const phone    = document.getElementById('signupPhone').value.trim();
+
+  if (!username) { showToast('Username is required', 'error'); return; }
+  if (!password) { showToast('Password is required', 'error'); return; }
+  if (!name)     { showToast('Full name is required', 'error'); return; }
+
+  try {
+    const res = await fetch('http://localhost:3005/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password, name, email, phone })
+    });
+    const data = await res.json();
+    if (!res.ok) {
+      showToast(data.error || 'Registration failed', 'error');
+      return;
+    }
+    // Clear signup fields
+    ['signupUsername','signupPassword','signupName','signupEmail','signupPhone']
+      .forEach(id => document.getElementById(id).value = '');
+    showPage('login');
+    showToast('Account created! You can now log in.', 'success');
+  } catch (err) {
+    console.error('Signup Error:', err);
+    showToast('Cannot connect to server', 'error');
+  }
+}
+
 // ════════════════════════════════════════════════
 // PAGE / TAB NAVIGATION
 // ════════════════════════════════════════════════

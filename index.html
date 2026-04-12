@@ -33,7 +33,44 @@
           <input type="password" id="loginPassword" class="form-input" placeholder="Enter your password" />
         </div>
         <button class="btn-primary full-width" onclick="login()">Login →</button>
+        <div class="login-divider"><span>or</span></div>
+        <button class="btn-outline full-width" onclick="showPage('signup')">Create an Account</button>
         <p class="hint-text">Demo accounts: user1/pass1 · user2/pass2 · user3/pass3</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ══════════ SIGNUP PAGE ══════════ -->
+  <section class="page" id="page-signup">
+    <div class="login-wrapper">
+      <div class="login-card">
+        <div class="login-logo">
+          <span class="logo-icon">🚇</span>
+          <h1>Chennai Metro</h1>
+          <p>Create Your Account</p>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Username <span style="color:var(--red)">*</span></label>
+          <input type="text" id="signupUsername" class="form-input" placeholder="Choose a username" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password <span style="color:var(--red)">*</span></label>
+          <input type="password" id="signupPassword" class="form-input" placeholder="Choose a password" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Full Name <span style="color:var(--red)">*</span></label>
+          <input type="text" id="signupName" class="form-input" placeholder="Your full name" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email</label>
+          <input type="email" id="signupEmail" class="form-input" placeholder="your@email.com (optional)" />
+        </div>
+        <div class="form-group">
+          <label class="form-label">Phone</label>
+          <input type="text" id="signupPhone" class="form-input" placeholder="10-digit phone (optional)" maxlength="10" />
+        </div>
+        <button class="btn-primary full-width" onclick="signup()">Create Account →</button>
+        <button class="btn-outline full-width" style="margin-top:10px;" onclick="showPage('login')">← Back to Login</button>
       </div>
     </div>
   </section>

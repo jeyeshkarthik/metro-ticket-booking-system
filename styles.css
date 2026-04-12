@@ -329,6 +329,39 @@ body {
 
 .full-width { width: 100%; }
 
+.btn-outline {
+  background: transparent;
+  color: var(--accent-deep);
+  border: 1.5px solid var(--accent);
+  border-radius: 10px;
+  padding: 12px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.18s;
+}
+.btn-outline:hover {
+  background: var(--accent-glow);
+}
+
+.login-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 16px 0;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.login-divider::before,
+.login-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+
 /* ═══════════════════════════════════
    HOME PANEL
 ═══════════════════════════════════ */

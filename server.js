@@ -102,6 +102,51 @@ app.post('/login', async (req, res) => {
     }
 });
 
+// ── POST /register ────────────────────────────────────────────────────────
+app.post('/register', async (req, res) => {
+    const { username, password, name, email, phone } = req.body;
+
+    if (!username || !password || !name) {
+        return res.status(400).json({ error: 'Username, password and full name are required' });
+    }
+
+    let conn;
+    try {
+        conn = await getConnection();
+
+        // Check if username already exists
+        const check = await conn.execute(
+            'SELECT passenger_id FROM PASSENGER WHERE username = :u',
+            { u: username },
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        if (check.rows.length > 0) {
+            return res.status(409).json({ error: 'Username already taken. Please choose another.' });
+        }
+
+        // Insert new passenger
+        await conn.execute(
+            `INSERT INTO PASSENGER (username, password, name, email, phone)
+             VALUES (:u, :p, :n, :e, :ph)`,
+            {
+                u:  username,
+                p:  password,
+                n:  name,
+                e:  email  || null,
+                ph: phone  || null
+            },
+            { autoCommit: true }
+        );
+
+        res.json({ success: true, message: 'Account created successfully!' });
+    } catch (err) {
+        console.error('Register Error:', err);
+        res.status(500).json({ error: 'Database error: ' + err.message });
+    } finally {
+        if (conn) await conn.close();
+    }
+});
+
 // ── POST /route ───────────────────────────────────────────────────────────
 app.post('/route', async (req, res) => {
     const { source_station_id, destination_station_id } = req.body;
