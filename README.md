@@ -6,29 +6,34 @@ A full-stack metro ticket booking application built with a static frontend and a
 
 This project simulates a metro ticketing system for the Chennai Metro network. It includes:
 
-- user login and authentication against an Oracle database
+- user registration (signup) and login against an Oracle database
 - station lookup and route planning
 - fare calculation based on route distance
 - live next-train schedule retrieval
 - ticket booking with payment recording
 - ticket history and booking details
+- interactive metro map with interchange markers
 
 ## Architecture
 
 - Frontend: `index.html`, `styles.css`, `script.js`
-- Backend: `server.js`
+- Backend: `server.js` (Express, serves frontend as static files)
+- Database: Oracle XE (`localhost:1521/xe`)
 - Database seed scripts: `insert_data.sql`, `all_routes.sql`
+- Database schema: `init.sql`
 - Database fix helper: `fix_db.js`
-- Database tables created: `PASSENGER`, `LINE`, `STATION`, `LINE_STATION`, `TRAIN`, `SCHEDULE`, `ROUTE`, `TICKET`, `PAYMENT`
+- Database tables: `PASSENGER`, `LINE`, `STATION`, `LINE_STATION`, `TRAIN`, `SCHEDULE`, `ROUTE`, `TICKET`, `PAYMENT`
 
 ## Features
 
-- login with demo users stored in the `PASSENGER` table
+- account registration — new users can sign up and are stored in the `PASSENGER` table
+- login with credentials validated against the Oracle DB
 - retrieve station list from the Oracle DB
 - calculate routes and fare using station IDs
 - display upcoming train departures from schedule data
 - book tickets and save payment records
 - fetch ticket history for a passenger
+- metro map view with colour-coded lines and interchange stations
 
 ## Prerequisites
 
@@ -56,7 +61,7 @@ const DB_CONFIG = {
 
 Update these values to match your Oracle environment.
 
-3. Create the database schema and tables in Oracle.
+3. Create the database schema and tables in Oracle using `init.sql`.
 
 4. Load initial data:
 
@@ -65,7 +70,7 @@ Update these values to match your Oracle environment.
 
 5. Optionally run `fix_db.js` to normalize train names and schedule frequencies if needed.
 
-## Running the Backend
+## Running the App
 
 Start the Express server:
 
@@ -73,28 +78,15 @@ Start the Express server:
 node server.js
 ```
 
-The backend listens on `http://localhost:3005`.
+Then open your browser and go to:
 
-## Running the Frontend
-
-Open `index.html` from a local HTTP server. Fetch requests require an HTTP origin, so do not load the file directly from the `file://` protocol.
-
-Recommended options:
-
-- use the VS Code Live Server extension
-- or run a simple static server such as:
-
-```bash
-npx serve .
+```
+http://localhost:3005
 ```
 
-Then open the served page in your browser.
+The server serves the frontend (`index.html`) directly — no separate static server needed.
 
 ## API Reference
-
-### `GET /`
-
-Returns a simple health status.
 
 ### `GET /test-db`
 
@@ -102,7 +94,25 @@ Verifies Oracle database connectivity.
 
 ### `GET /stations`
 
-Returns station records from the `STATION` table.
+Returns all station records from the `STATION` table.
+
+### `POST /register`
+
+Creates a new passenger account.
+
+Request body:
+
+```json
+{
+  "username": "newuser",
+  "password": "mypassword",
+  "name": "Full Name",
+  "email": "email@example.com",
+  "phone": "9876543210"
+}
+```
+
+Returns `{ success: true }` on success. Returns `409` if the username is already taken.
 
 ### `POST /login`
 
@@ -115,6 +125,8 @@ Request body:
 }
 ```
 
+Returns user details on success. Returns `401` for invalid credentials.
+
 ### `POST /route`
 
 Request body:
@@ -126,11 +138,11 @@ Request body:
 }
 ```
 
-Returns route data and fare.
+Returns route data including `ROUTE_ID`, `NUM_STATIONS`, and calculated `FARE`.
 
 ### `GET /next-trains`
 
-Returns upcoming trains based on schedule data.
+Returns upcoming trains based on schedule data for the next 30 minutes.
 
 ### `GET /tickets?passenger_id=<id|username>`
 
@@ -148,31 +160,36 @@ Request body:
 }
 ```
 
-Creates a ticket and payment record.
+Creates a ticket and payment record in a single transaction. Returns the generated `ticket_id`.
 
 ## Demo Accounts
 
 The sample database includes these demo users:
 
-- `user1` / `pass1`
-- `user2` / `pass2`
-- `user3` / `pass3`
-- `user4` / `pass4`
-- `user5` / `pass5`
+| Username | Password |
+|---|---|
+| user1 | pass1 |
+| user2 | pass2 |
+| user3 | pass3 |
+| user4 | pass4 |
+| user5 | pass5 |
 
 ## File Summary
 
-- `index.html` — frontend interface
-- `styles.css` — frontend styling
-- `script.js` — frontend behavior and UI logic
-- `server.js` — Express backend implementation
-- `package.json` — Node dependencies
-- `insert_data.sql` — initial database seed data
-- `all_routes.sql` — route generation script
-- `fix_db.js` — optional Oracle DB update helper
+| File | Purpose |
+|---|---|
+| `index.html` | Frontend interface (login, signup, booking, history, map) |
+| `styles.css` | Frontend styling and dark mode |
+| `script.js` | Frontend logic, Dijkstra route algorithm, API calls |
+| `server.js` | Express backend, Oracle API routes |
+| `package.json` | Node.js dependencies |
+| `init.sql` | Database schema creation script |
+| `insert_data.sql` | Initial database seed data |
+| `all_routes.sql` | Route generation script for all station pairs |
+| `fix_db.js` | Optional Oracle DB normalisation helper |
 
 ## Notes
 
-- The backend uses `oracledb`, which typically requires Oracle client libraries.
+- The backend uses `oracledb`, which requires Oracle client libraries to be installed.
 - If you encounter `oracledb` installation issues, install Oracle Instant Client and configure the runtime environment.
-- Replace the hard-coded Oracle credentials in `server.js` before deployment.
+- Passwords are stored as plain text in this project for simplicity.

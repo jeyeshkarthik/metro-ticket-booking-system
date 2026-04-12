@@ -110,20 +110,20 @@ async function login() {
   const uid = document.getElementById('loginUserId').value.trim();
   const pass = document.getElementById('loginPassword').value;
   if (!uid || !pass) { showToast('Please enter User ID and Password', 'error'); return; }
-  
+
   try {
     const res = await fetch('http://localhost:3005/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username: uid, password: pass })
     });
-    
+
     const data = await res.json();
     if (!res.ok) {
       showToast(data.error || 'Invalid User ID or Password', 'error');
       return;
     }
-    
+
     // currentUser maps to PASSENGER table row fetched from DB
     const user = data.user;
     currentUser = {
@@ -132,7 +132,7 @@ async function login() {
       email: user.email,
       phone: user.phone,
     };
-    
+
     if (!ticketDB[currentUser.passenger_id]) ticketDB[currentUser.passenger_id] = [];
     document.getElementById('navUser').textContent = `👤 ${user.name}`;
     document.getElementById('homeGreeting').textContent = `👋 Hello, ${user.name}`;
@@ -156,13 +156,13 @@ function logout() {
 async function signup() {
   const username = document.getElementById('signupUsername').value.trim();
   const password = document.getElementById('signupPassword').value;
-  const name     = document.getElementById('signupName').value.trim();
-  const email    = document.getElementById('signupEmail').value.trim();
-  const phone    = document.getElementById('signupPhone').value.trim();
+  const name = document.getElementById('signupName').value.trim();
+  const email = document.getElementById('signupEmail').value.trim();
+  const phone = document.getElementById('signupPhone').value.trim();
 
   if (!username) { showToast('Username is required', 'error'); return; }
   if (!password) { showToast('Password is required', 'error'); return; }
-  if (!name)     { showToast('Full name is required', 'error'); return; }
+  if (!name) { showToast('Full name is required', 'error'); return; }
 
   try {
     const res = await fetch('http://localhost:3005/register', {
@@ -176,7 +176,7 @@ async function signup() {
       return;
     }
     // Clear signup fields
-    ['signupUsername','signupPassword','signupName','signupEmail','signupPhone']
+    ['signupUsername', 'signupPassword', 'signupName', 'signupEmail', 'signupPhone']
       .forEach(id => document.getElementById(id).value = '');
     showPage('login');
     showToast('Account created! You can now log in.', 'success');
@@ -458,7 +458,7 @@ async function findAndBook() {
     const h = now.getHours();
     const m = now.getMinutes();
     const isClosed = (h >= 23) || (h < 4) || (h === 4 && m < 30);
-    
+
     if (isClosed) {
       document.getElementById('btnProceedToPay').style.display = 'none';
       document.getElementById('bookingClosedMessage').style.display = 'block';
@@ -523,43 +523,43 @@ function renderRouteSegments(segments) {
  * as requested! "Do it like how it was before."
  */
 function renderTrainTimings(lineId, stationName) {
-    const line = LINES[lineId];
-    const container = document.getElementById('timingsContent');
-    if (!line) return;
+  const line = LINES[lineId];
+  const container = document.getElementById('timingsContent');
+  if (!line) return;
 
-    const header = `
+  const header = `
     <div class="timings-header">
       <span class="timings-line-pill" style="background:${line.color}">${line.name}</span>
       <span class="timings-station">Trains arriving at <strong>${stationName}</strong> in next 30 mins</span>
     </div>`;
 
-    container.innerHTML = header + `<div style="padding:20px; text-align:center; color:#64748b;">🔄 Loading live trains from database...</div>`;
+  container.innerHTML = header + `<div style="padding:20px; text-align:center; color:#64748b;">🔄 Loading live trains from database...</div>`;
 
-    fetch('http://localhost:3005/next-trains')
-        .then(res => res.json())
-        .then(allTrains => {
-            const linePrefix = line.name.split(' ')[0].toUpperCase();
-            const trains = allTrains.filter(tr => tr.train_number.toUpperCase().startsWith(linePrefix));
+  fetch('http://localhost:3005/next-trains')
+    .then(res => res.json())
+    .then(allTrains => {
+      const linePrefix = line.name.split(' ')[0].toUpperCase();
+      const trains = allTrains.filter(tr => tr.train_number.toUpperCase().startsWith(linePrefix));
 
-            if (!trains.length) {
-                container.innerHTML = header + `
+      if (!trains.length) {
+        container.innerHTML = header + `
                 <div class="no-trains">
                   <span>🚫</span>
                   <p>No trains on this line in the next 30 minutes.<br>Metro service time resumes at 5:00 AM.</p>
                 </div>`;
-                return;
-            }
+        return;
+      }
 
-            const now = new Date();
-            const trainCards = trains.map(tr => {
-                const dep = new Date(tr.next_departure);
-                const minsAway = Math.max(0, Math.round((dep - now) / 60000));
-                const arrivesStr = dep.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
-                const depTermMillis = new Date(dep.getTime() - (8 + Math.random() * 5) * 60000);
-                const departsTerminusStr = depTermMillis.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+      const now = new Date();
+      const trainCards = trains.map(tr => {
+        const dep = new Date(tr.next_departure);
+        const minsAway = Math.max(0, Math.round((dep - now) / 60000));
+        const arrivesStr = dep.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+        const depTermMillis = new Date(dep.getTime() - (8 + Math.random() * 5) * 60000);
+        const departsTerminusStr = depTermMillis.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
 
-                const urgent = minsAway <= 5;
-                return `
+        const urgent = minsAway <= 5;
+        return `
                 <div class="train-card">
                   <div class="train-main">
                     <div class="train-no" style="color:${line.color}">🚆 ${tr.train_number}</div>
@@ -570,20 +570,20 @@ function renderTrainTimings(lineId, stationName) {
                     ${minsAway === 0 ? 'Now' : `${minsAway} min`}
                   </div>
                 </div>`;
-            }).join('');
+      }).join('');
 
-            container.innerHTML = header + `
+      container.innerHTML = header + `
               <div class="train-list">
                 ${trainCards}
               </div>`;
-        })
-        .catch(err => {
-            container.innerHTML = header + `
+    })
+    .catch(err => {
+      container.innerHTML = header + `
               <div class="no-trains" style="color:#ef4444;">
                 <span>⚠️</span>
                 <p>Error fetching live database train schedule for ${stationName}.</p>
               </div>`;
-        });
+    });
 }
 
 // selectTrain removed — timings are informational only.
@@ -749,9 +749,9 @@ function renderMap() {
 function renderHistory() {
   const container = document.getElementById('historyContainer');
   if (!currentUser) return;
-  
+
   const tickets = ticketDB[currentUser.passenger_id] || [];
-  
+
   if (!tickets.length) {
     container.innerHTML = `<div class="empty-state">
       <div class="empty-icon">🎫</div>
@@ -760,7 +760,7 @@ function renderHistory() {
       <button class="btn-primary" onclick="showTab('booking')">Book a Ticket</button>
     </div>`; return;
   }
-  
+
   const html = tickets.map(t => {
     const from = t.source_station_name || t.from || 'Unknown';
     const to = t.destination_station_name || t.to || 'Unknown';
@@ -768,7 +768,7 @@ function renderHistory() {
       const li = LINES[seg.line]; const c = li?.color || '#888';
       return `<span class="rt-seg" style="color:${c}"><span class="rt-dot" style="background:${c}"></span>${seg.stations[0].name} <span class="rt-arrow-svg"><svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></span> ${seg.stations[seg.stations.length - 1].name} <em>(${li?.name || seg.line})</em></span>`;
     }).join('<span class="rt-arrow"> ↔ </span>');
-    
+
     const payLabel = t.payment_method
       ? `${t.payment_method === 'UPI' ? '📱' : '💳'} ${t.payment_method}${t.payment_detail ? ` · ${t.payment_detail}` : ''}`
       : '';
@@ -776,7 +776,7 @@ function renderHistory() {
     const totalFare = t.total || t.fare || 0;
     const count = t.ticket_count || t.count || 1;
     const ticketId = t.ticket_id || t.id || 'N/A';
-    
+
     return `<div class="history-card" onclick="viewHistoryTicket('${ticketId}')" style="cursor: pointer;">
       <div class="hc-top">
         <div class="hc-route">
@@ -842,7 +842,7 @@ function viewHistoryTicket(ticketId) {
         <span class="seg-dot" style="background:${color}"></span>${lineName}
       </div>
       <div class="seg-stations">`;
-      
+
     seg.stations.forEach((st, i) => {
       const isEnd = i === 0 || i === seg.stations.length - 1;
       html += `<span class="seg-station ${isEnd ? 'seg-terminal' : ''}" style="${isEnd ? `color:${color};` : ''}">${st.name}</span>`;
@@ -851,7 +851,7 @@ function viewHistoryTicket(ticketId) {
       }
     });
     html += `</div>`;
-    
+
     if (idx < (t.segments || []).length - 1) {
       const nextLine = LINES[t.segments[idx + 1].line];
       html += `<div class="interchange-note">🔄 Change to ${nextLine ? nextLine.name : t.segments[idx + 1].line} at ${seg.stations[seg.stations.length - 1].name}</div>`;

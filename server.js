@@ -58,7 +58,7 @@ app.get('/stations', async (req, res) => {
 // ── POST /login ───────────────────────────────────────────────────────────
 app.post('/login', async (req, res) => {
     const { username, password } = req.body;
-    
+
     if (!username || !password) {
         return res.status(400).json({ error: 'Username and password are required' });
     }
@@ -66,13 +66,13 @@ app.post('/login', async (req, res) => {
     let conn;
     try {
         conn = await getConnection();
-        
+
         const query = `
             SELECT passenger_id, username, name, email, phone 
             FROM PASSENGER 
             WHERE username = :u AND password = :p
         `;
-        
+
         const result = await conn.execute(
             query,
             { u: username, p: password },
@@ -129,11 +129,11 @@ app.post('/register', async (req, res) => {
             `INSERT INTO PASSENGER (username, password, name, email, phone)
              VALUES (:u, :p, :n, :e, :ph)`,
             {
-                u:  username,
-                p:  password,
-                n:  name,
-                e:  email  || null,
-                ph: phone  || null
+                u: username,
+                p: password,
+                n: name,
+                e: email || null,
+                ph: phone || null
             },
             { autoCommit: true }
         );
